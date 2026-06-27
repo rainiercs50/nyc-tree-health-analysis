@@ -1,0 +1,48 @@
+{
+  "rows": 49994,
+  "columns": 36,
+  "target_counts": {
+    "Good": 37779,
+    "Fair": 9403,
+    "Poor": 2812
+  },
+  "target_pct": {
+    "Good": 75.57,
+    "Fair": 18.81,
+    "Poor": 5.62
+  },
+  "borough_counts": {
+    "Queens": 17647,
+    "Brooklyn": 13290,
+    "Manhattan": 7795,
+    "Staten Island": 5825,
+    "Bronx": 5437
+  },
+  "top_species": {
+    "London planetree": 6720,
+    "honeylocust": 5572,
+    "Callery pear": 4425,
+    "pin oak": 4130,
+    "Norway maple": 3081,
+    "littleleaf linden": 2400,
+    "Japanese zelkova": 2100,
+    "Sophora": 2011,
+    "ginkgo": 1911,
+    "cherry": 1472
+  },
+  "problem_status_pct": {
+    "No": 56.88,
+    "Yes": 43.12
+  },
+  "median_dbh_by_health": {
+    "Fair": 10.0,
+    "Good": 11.0,
+    "Poor": 7.0
+  },
+  "cleaning_notes": [
+    "Dropped rows missing health, tree_dbh, boroname, or spc_common.",
+    "Standardized missing categorical values to Unknown for app reliability.",
+    "Created problem_count, has_problem, dbh_group, species_top15_or_other, and binary problem flags.",
+    "Filtered extreme tree_dbh values outside 0-100 inches for stable visualizations and model handoff."
+  ]
+}

@@ -1,0 +1,22 @@
+Column,Meaning / Use
+tree_id,"Unique tree identifier from NYC Open Data. Keep for traceability, not as model input."
+tree_dbh,Tree diameter at breast height in inches. Numeric predictor; binned into dbh_group for charts.
+curb_loc,Whether the tree is on the curb or offset from the curb.
+health,"Target variable: Good, Fair, or Poor."
+spc_common,Common species name.
+species_top15_or_other,"Feature-engineered species grouping: top 15 species kept, all others grouped as Other species."
+steward,Reported stewardship/care category.
+guards,Tree guard status.
+sidewalk,Sidewalk damage condition near the tree.
+problems,Original combined problem text field.
+problem_text_clean,"Cleaned problem text, with missing/none values standardized."
+root_stone/root_grate/root_other,Original yes/no root problem fields.
+trunk_wire/trnk_light/trnk_other,Original yes/no trunk problem fields.
+brch_light/brch_shoe/brch_other,Original yes/no branch problem fields.
+*_flag,"Binary engineered flag from original yes/no problem columns; 1 = Yes, 0 = No."
+problem_count,Total number of root/trunk/branch problem flags marked Yes.
+has_problem,"Yes when problem_count > 0, otherwise No."
+boroname,NYC borough.
+nta_name,Neighborhood Tabulation Area name.
+dbh_group,Feature-engineered diameter category for easier EDA and user-facing charts.
+latitude/longitude,Coordinates for map visualizations; not required for first model version.
