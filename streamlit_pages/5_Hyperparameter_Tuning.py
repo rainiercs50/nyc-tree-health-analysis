@@ -1,9 +1,10 @@
 """
-Member 2 page: Hyperparameter Tuning / Experiment Tracking
-Place this file in your Streamlit app's pages/ folder as 5_Hyperparameter_Tuning.py.
+Member 2 page: Hyperparameter Tuning tracked with Weights & Biases
+Place in your Streamlit app's pages/ folder as 5_Hyperparameter_Tuning.py.
 
 Expected paths from app root:
-    data/member2_model_metrics.json
+    data/member2_wandb_runs.csv
+    data/member2_wandb_summary.json
     data/member2_model_comparison.csv
     models/model_metadata.json
 """
@@ -15,80 +16,67 @@ import streamlit as st
 import plotly.express as px
 
 st.set_page_config(page_title="NYC Street Tree Health | Tuning", layout="wide")
-st.title("🎛️ Hyperparameter Tuning & Experiment Tracking")
-st.caption("Random Forest grid search on macro-F1 — modeling by Member 2")
+st.title("🎛️ Hyperparameter Tuning — Weights & Biases")
+st.caption("Tracked Random Forest experiments and model selection — modeling by Member 2")
 
-METRICS_PATH = Path("data/member2_model_metrics.json")
-COMPARISON_PATH = Path("data/member2_model_comparison.csv")
-META_PATH = Path("models/model_metadata.json")
+RUNS = Path("data/member2_wandb_runs.csv")
+SUMMARY = Path("data/member2_wandb_summary.json")
+COMPARISON = Path("data/member2_model_comparison.csv")
+META = Path("models/model_metadata.json")
 
-try:
-    metrics = json.loads(METRICS_PATH.read_text())
-    meta = json.loads(META_PATH.read_text())
-except FileNotFoundError:
-    st.error("Could not find Member 2 metrics. Copy the `data/` and `models/` folders into the app root.")
-    st.stop()
-
-# ------------------------------------------------------------ Approach summary
-st.subheader("1. Tuning approach")
 st.markdown("""
-- **Search:** `GridSearchCV` over Random Forest depth and leaf size, with `sqrt` feature sampling.
-- **Scoring:** **macro-F1** (not accuracy) so the rare *Poor* class counts as much as *Good*.
-- **Validation:** 3-fold stratified cross-validation on the training data.
-- **Imbalance handling:** `class_weight="balanced_subsample"` so the model is penalized for
-  ignoring minority classes.
-- The winning configuration is refit on the full training set and saved as the deployed model.
+We tracked every Random Forest configuration with **Weights & Biases**. Each configuration is a
+W&B run logging its cross-validated **R²** and **RMSE**, so experiments can be compared in the
+W&B dashboard and the best one selected automatically.
+
+```bash
+wandb login                 # once, with your API key
+python scripts/tune_with_wandb.py
+# offline (no account): WANDB_MODE=offline python scripts/tune_with_wandb.py
+```
 """)
 
-# -------------------------------------------------------------- Search results
-st.subheader("2. Search results (cross-validated macro-F1)")
-tr = metrics.get("tuning_results", [])
-if tr:
-    rows = []
-    for r in tr:
-        p = r["params"]
-        rows.append({
-            "max_depth": p.get("max_depth"),
-            "min_samples_leaf": p.get("min_samples_leaf"),
-            "n_estimators": p.get("n_estimators"),
-            "cv_macro_f1": round(r["mean_test_macro_f1"], 4),
-            "cv_std": round(r["std_test_macro_f1"], 4),
-        })
-    res_df = pd.DataFrame(rows).sort_values("cv_macro_f1", ascending=False).reset_index(drop=True)
-    best_val = metrics.get("cv_best_macro_f1", res_df["cv_macro_f1"].max())
-
-    res_df["label"] = ("depth=" + res_df["max_depth"].astype(str)
-                       + ", leaf=" + res_df["min_samples_leaf"].astype(str))
-    fig = px.bar(res_df.sort_values("cv_macro_f1"), x="cv_macro_f1", y="label",
-                 orientation="h", error_x="cv_std", text="cv_macro_f1",
-                 color="cv_macro_f1", color_continuous_scale="Blues")
-    fig.update_traces(texttemplate="%{text:.3f}", textposition="outside")
-    fig.update_layout(coloraxis_showscale=False, xaxis_title="CV mean macro-F1",
-                      yaxis_title="Candidate")
+# ---------------------------------------------------------------- Tracked runs
+st.subheader("1. Tracked experiments (cross-validated R²)")
+if RUNS.exists():
+    runs = pd.read_csv(RUNS)
+    runs_sorted = runs.sort_values("cv_r2", ascending=False).reset_index(drop=True)
+    runs_sorted["config"] = ("depth=" + runs_sorted["max_depth"].astype(str)
+                             + ", leaf=" + runs_sorted["min_samples_leaf"].astype(str))
+    fig = px.bar(runs_sorted.sort_values("cv_r2"), x="cv_r2", y="config", orientation="h",
+                 text="cv_r2", color="cv_r2", color_continuous_scale="Blues")
+    fig.update_traces(texttemplate="%{text:.4f}", textposition="outside")
+    fig.update_layout(coloraxis_showscale=False, xaxis_title="CV mean R² (3-fold)",
+                      yaxis_title="Configuration")
     st.plotly_chart(fig, use_container_width=True)
-    st.dataframe(res_df.drop(columns=["label"]), use_container_width=True)
+    st.dataframe(runs_sorted.drop(columns=["config"]), use_container_width=True)
 
-    best = meta["models"]["random_forest"]["best_params"]
-    st.success(f"**Best configuration:** {best}  •  CV macro-F1 = {best_val:.3f}")
+    if SUMMARY.exists():
+        s = json.loads(SUMMARY.read_text())
+        best = s["best"]
+        st.success(
+            f"**Best configuration** (by {s['selection_metric']}): "
+            f"depth={best['max_depth']}, leaf={best['min_samples_leaf']}, "
+            f"trees={best['n_estimators']}  →  R²={best['cv_r2']:.4f}, RMSE={best['cv_rmse']:.4f}  "
+            f"•  W&B project `{s['project']}` ({s['n_runs']} runs)"
+        )
 else:
-    st.caption("No tuning_results found in metrics file.")
+    st.caption("Run scripts/tune_with_wandb.py to generate data/member2_wandb_runs.csv.")
 
 # ----------------------------------------------------------- Baseline vs final
-st.subheader("3. Baseline vs improved model (held-out test set)")
-try:
-    comp = pd.read_csv(COMPARISON_PATH)
-    long = comp.melt(id_vars="model", value_vars=["accuracy", "macro_f1", "weighted_f1"],
+st.subheader("2. Selected model vs baseline (held-out test set)")
+if COMPARISON.exists():
+    comp = pd.read_csv(COMPARISON)
+    long = comp.melt(id_vars="model", value_vars=["r2", "mapped_accuracy"],
                      var_name="metric", value_name="score")
-    fig = px.bar(long, x="metric", y="score", color="model", barmode="group",
-                 text="score")
-    fig.update_traces(texttemplate="%{text:.2f}", textposition="outside")
-    fig.update_layout(yaxis_range=[0, 1], xaxis_title="Metric", yaxis_title="Score")
+    fig = px.bar(long, x="metric", y="score", color="model", barmode="group", text="score")
+    fig.update_traces(texttemplate="%{text:.3f}", textposition="outside")
+    fig.update_layout(xaxis_title="Metric (higher is better)", yaxis_title="Score")
     st.plotly_chart(fig, use_container_width=True)
     st.dataframe(comp.round(4), use_container_width=True)
-    st.write(
-        "**Insight:** tuning the Random Forest improved both accuracy and macro-F1 over the "
-        "Logistic Regression baseline. Macro-F1 is the honest headline number because the "
-        "dataset is imbalanced."
-    )
-except FileNotFoundError:
-    st.caption("Add data/member2_model_comparison.csv to show the baseline-vs-final comparison.")
+    st.write("**Insight:** the tuned Random Forest Regressor edges out the Linear Regression "
+             "baseline on R² and RMSE. R² is low because tree health is only weakly predictable "
+             "from these features — an honest finding we report rather than hide. The model is "
+             "still useful for *ranking* trees by inspection priority.")
+else:
+    st.caption("Add data/member2_model_comparison.csv to show the comparison.")

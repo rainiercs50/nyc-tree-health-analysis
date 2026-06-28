@@ -1,12 +1,18 @@
 {
+  "task": "regression",
   "train_rows": 39995,
   "test_rows": 9999,
+  "score_map": {
+    "Poor": 0,
+    "Fair": 1,
+    "Good": 2
+  },
   "class_distribution_full": {
     "Good": 37779,
     "Fair": 9403,
     "Poor": 2812
   },
-  "cv_best_macro_f1": 0.4042632208598433,
+  "cv_best_r2": 0.08178595932618489,
   "tuning_results": [
     {
       "params": {
@@ -15,8 +21,8 @@
         "min_samples_leaf": 2,
         "n_estimators": 150
       },
-      "mean_test_macro_f1": 0.4002273127270826,
-      "std_test_macro_f1": 0.01252853982063704
+      "mean_test_r2": 0.07806834444249915,
+      "std_test_r2": 0.003461232208667399
     },
     {
       "params": {
@@ -25,8 +31,8 @@
         "min_samples_leaf": 5,
         "n_estimators": 150
       },
-      "mean_test_macro_f1": 0.3907131860091953,
-      "std_test_macro_f1": 0.0047596631777988415
+      "mean_test_r2": 0.07520269692653166,
+      "std_test_r2": 0.002599642727760061
     },
     {
       "params": {
@@ -35,8 +41,8 @@
         "min_samples_leaf": 2,
         "n_estimators": 150
       },
-      "mean_test_macro_f1": 0.4042632208598433,
-      "std_test_macro_f1": 0.007661607167523814
+      "mean_test_r2": 0.07794975257694385,
+      "std_test_r2": 0.006469571966385887
     },
     {
       "params": {
@@ -45,119 +51,57 @@
         "min_samples_leaf": 5,
         "n_estimators": 150
       },
-      "mean_test_macro_f1": 0.4019201655985258,
-      "std_test_macro_f1": 0.007180596880037082
+      "mean_test_r2": 0.08178595932618489,
+      "std_test_r2": 0.004310453729600214
     }
   ],
-  "logistic_regression": {
-    "name": "Logistic Regression (baseline)",
-    "accuracy": 0.49364936493649364,
-    "macro_f1": 0.3571701931603412,
-    "weighted_f1": 0.5540382659883815,
-    "report": {
-      "Good": {
-        "precision": 0.8280847692612399,
-        "recall": 0.5533350979354156,
-        "f1-score": 0.6633875446251487,
-        "support": 7556.0
-      },
-      "Fair": {
-        "precision": 0.22793719545208446,
-        "recall": 0.22381711855396066,
-        "f1-score": 0.22585836909871246,
-        "support": 1881.0
-      },
-      "Poor": {
-        "precision": 0.10763776990009669,
-        "recall": 0.594306049822064,
-        "f1-score": 0.18226466575716235,
-        "support": 562.0
-      },
-      "accuracy": 0.49364936493649364,
-      "macro avg": {
-        "precision": 0.38788657820447364,
-        "recall": 0.4571527554371468,
-        "f1-score": 0.3571701931603412,
-        "support": 9999.0
-      },
-      "weighted avg": {
-        "precision": 0.6746925500417196,
-        "recall": 0.49364936493649364,
-        "f1-score": 0.5540382659883815,
-        "support": 9999.0
-      }
-    },
-    "confusion_matrix": [
+  "linear_regression": {
+    "name": "Linear Regression (baseline)",
+    "r2": 0.059259850148418725,
+    "rmse": 0.5509123268176338,
+    "mae": 0.42465419961460177,
+    "mapped_accuracy": 0.7384738473847384,
+    "mapped_macro_f1": 0.35268955610946867,
+    "mapped_confusion": [
       [
-        4181,
-        1344,
-        2031
+        7099,
+        457,
+        0
       ],
       [
-        722,
-        421,
-        738
+        1596,
+        285,
+        0
       ],
       [
-        146,
-        82,
-        334
+        431,
+        131,
+        0
       ]
     ]
   },
-  "random_forest": {
-    "name": "Random Forest (tuned, improved)",
-    "accuracy": 0.5817581758175817,
-    "macro_f1": 0.40979553079692743,
-    "weighted_f1": 0.6219189143659831,
-    "report": {
-      "Good": {
-        "precision": 0.8281923714759536,
-        "recall": 0.6609317098994176,
-        "f1-score": 0.735168555866333,
-        "support": 7556.0
-      },
-      "Fair": {
-        "precision": 0.2837162837162837,
-        "recall": 0.30196703880914405,
-        "f1-score": 0.2925573010558846,
-        "support": 1881.0
-      },
-      "Poor": {
-        "precision": 0.12963904422979156,
-        "recall": 0.45373665480427045,
-        "f1-score": 0.20166073546856464,
-        "support": 562.0
-      },
-      "accuracy": 0.5817581758175817,
-      "macro avg": {
-        "precision": 0.4138492331406763,
-        "recall": 0.472211801170944,
-        "f1-score": 0.40979553079692743,
-        "support": 9999.0
-      },
-      "weighted avg": {
-        "precision": 0.6865035534953273,
-        "recall": 0.5817581758175817,
-        "f1-score": 0.6219189143659831,
-        "support": 9999.0
-      }
-    },
-    "confusion_matrix": [
+  "random_forest_regressor": {
+    "name": "Random Forest Regressor (tuned, improved)",
+    "r2": 0.08690388408947924,
+    "rmse": 0.5427575805020688,
+    "mae": 0.4159497015351233,
+    "mapped_accuracy": 0.737973797379738,
+    "mapped_macro_f1": 0.36243488048902495,
+    "mapped_confusion": [
       [
-        4994,
-        1308,
-        1254
+        7036,
+        520,
+        0
       ],
       [
-        855,
-        568,
-        458
+        1538,
+        343,
+        0
       ],
       [
-        181,
-        126,
-        255
+        398,
+        164,
+        0
       ]
     ]
   }

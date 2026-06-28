@@ -1,0 +1,14 @@
+{
+  "project": "nyc-tree-health-predictor",
+  "mode": "offline",
+  "n_runs": 4,
+  "selection_metric": "cv_r2",
+  "best": {
+    "max_depth": 16,
+    "min_samples_leaf": 5,
+    "n_estimators": 150,
+    "max_features": "sqrt",
+    "cv_r2": 0.0874,
+    "cv_rmse": 0.5433
+  }
+}

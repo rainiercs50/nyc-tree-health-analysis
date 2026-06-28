@@ -1,4 +1,4 @@
-# Member 2 Handoff: Modeling and Evaluation
+# Member 2 Handoff: Regression Modeling, SHAP, and W&B
 
 **Project:** NYC Street Tree Health Predictor
 **Course:** Intro to Data Science Final Project
@@ -7,114 +7,131 @@
 
 ## 1. What Member 2 completed
 
-Member 2 built the modeling layer on top of Member 1's model-ready dataset: a preprocessing
-pipeline, a baseline classifier, a tuned improved classifier, an honest evaluation for the
-imbalanced target, feature-importance explainability, saved model artifacts for the app, and
-three Streamlit pages (Model Prediction, Feature Importance, Hyperparameter Tuning).
+A full modeling layer aligned to the assignment rubric (**linear regression**, **two switchable
+models**, **SHAP** explainability, **Weights & Biases** tuning): a preprocessing pipeline, a Linear
+Regression baseline, a tuned Random Forest Regressor, honest regression evaluation, SHAP
+explainability, W&B-tracked hyperparameter search, saved artifacts, three Streamlit pages, and an
+executed modeling notebook.
 
-## 2. Data and feature contract
+## 2. Problem framing (why regression)
 
-- **Input:** `data/nyc_tree_member1_model_ready_sample.csv` (49,994 rows, no missing values).
-- **Target:** `health` — Good / Fair / Poor (imbalanced: ~75.6% / 18.8% / 5.6%).
-- **Split:** stratified 80/20 → 39,995 train / 9,999 test, `random_state=42`.
-- **Numeric features:** `tree_dbh`, `problem_count` (StandardScaler).
-- **Categorical features:** `species_top15_or_other`, `steward`, `guards`, `sidewalk`,
-  `has_problem`, `boroname`, `dbh_group`, `curb_loc` (OneHotEncoder, `handle_unknown="ignore"`).
+We predict a continuous **health score**: `Poor=0, Fair=1, Good=2`. A single number lets the city
+**rank trees by inspection priority** (lower score = higher priority), which is more actionable
+than three fixed buckets and lets us use **linear regression** as required.
 
-## 3. Models
+## 3. Data and feature contract
 
-| Stage | Model | Imbalance handling |
+- **Input:** `data/nyc_tree_member1_model_ready_sample.csv` (49,994 rows; from Member 1).
+- **Target:** `health_score` (0–2), derived from `health`. Split stratified by the original
+  category, 80/20 → 39,995 train / 9,999 test, `random_state=42`.
+- **Numeric:** `tree_dbh`, `problem_count` (StandardScaler).
+- **Categorical:** `species_top15_or_other`, `steward`, `guards`, `sidewalk`, `has_problem`,
+  `boroname`, `dbh_group`, `curb_loc` (OneHotEncoder, `handle_unknown="ignore"`).
+
+## 4. Models (two switchable)
+
+| Stage | Model | Notes |
 |---|---|---|
-| Baseline | Logistic Regression (`max_iter=1000`) | `class_weight="balanced"` |
-| Improved | Random Forest, tuned with GridSearchCV on macro-F1 | `class_weight="balanced_subsample"` |
+| Baseline | **Linear Regression** | required linear model |
+| Improved | **Random Forest Regressor** | tuned with GridSearchCV on R² + tracked in W&B |
 
-Tuning searched Random Forest depth and leaf size with 3-fold stratified CV scored on
-**macro-F1**. Best configuration: `max_depth=16, min_samples_leaf=2, max_features="sqrt",
-n_estimators=150` (refit on the full training set as the deployed model).
+Best RF config: `max_depth=16, min_samples_leaf=5, max_features="sqrt", n_estimators=150`
+(refit on the full training set).
 
-## 4. Results (held-out test set)
+## 5. Results (held-out test set)
 
-| Model | Accuracy | Macro-F1 | Weighted-F1 |
-|---|---|---|---|
-| Logistic Regression (baseline) | 0.494 | 0.357 | 0.554 |
-| **Random Forest (tuned)** | **0.582** | **0.410** | **0.622** |
+| Model | R² | RMSE | MAE | Mapped accuracy* |
+|---|---|---|---|---|
+| Linear Regression (baseline) | 0.059 | 0.551 | 0.425 | 0.739 |
+| **Random Forest Regressor (tuned)** | **0.087** | **0.543** | **0.416** | 0.738 |
 
-Per-class for the Random Forest (precision / recall / F1):
+\*Mapped accuracy = round the predicted score to the nearest band (Poor/Fair/Good) and compare to
+the true category.
 
-- Good: 0.83 / 0.66 / 0.74
-- Fair: 0.28 / 0.30 / 0.29
-- Poor: 0.13 / 0.45 / 0.20
+> **Honest finding:** R² is low — tree health is only weakly predictable from these observable
+> features, and the majority class is *Good*. The Random Forest still beats the linear baseline on
+> R²/RMSE/MAE. Present this transparently and frame the app as a **triage/ranking** tool, not a
+> precise health meter. This honesty is exactly what the rubric's "limitations" criterion rewards.
 
-The tuned Random Forest beats the baseline on both accuracy and macro-F1 and is the selected
-model. Top feature drivers: `species_top15_or_other`, `tree_dbh`, `boroname`, then `dbh_group`
-and `steward`.
+Top drivers (consistent across RF importance, SHAP, and linear coefficients): **species**,
+**trunk diameter / diameter group**, **borough**, and **visible problems**.
 
-> **Why not accuracy alone:** the classes are imbalanced, so macro-F1 and the confusion matrix
-> are the honest headline metrics. The model is strong on the majority Good class and weak on
-> the rare Poor class — say this openly in the presentation.
+## 6. Explainability — SHAP (rubric requirement)
 
-## 5. Files delivered
+`scripts/create_member2_package.py` runs `shap.TreeExplainer` on the Random Forest Regressor and
+saves the SHAP values + a beeswarm and an aggregated importance plot. Page 4 displays them.
+Direction of effect: more **visible problems** and being a **Norway maple** push the predicted
+score **down**; larger **diameter** and **honeylocust / London planetree** push it **up**.
+
+## 7. Hyperparameter tuning — Weights & Biases (rubric requirement)
+
+`scripts/tune_with_wandb.py` logs each RF configuration as a W&B run (CV R² + RMSE) and selects
+the best. It works two ways:
+
+```bash
+wandb login                                   # your API key, for the live dashboard
+python scripts/tune_with_wandb.py
+# or, no account needed (what generated the saved results):
+WANDB_MODE=offline python scripts/tune_with_wandb.py
+wandb sync wandb/offline-run-*                # push offline runs to your dashboard later
+```
+
+Results are saved to `data/member2_wandb_runs.csv` / `member2_wandb_summary.json`, which page 5
+reads. **For the live demo, run `wandb login` once so the W&B dashboard shows the runs.**
+
+## 8. Files delivered
 
 ```
 models/
-  logistic_regression.joblib     # baseline pipeline (preprocess + model)
-  random_forest.joblib           # tuned, deployed pipeline (~45 MB)
-  model_metadata.json            # feature lists, dropdown options, metrics, importance
+  linear_regression.joblib            # baseline pipeline
+  random_forest_regressor.joblib      # tuned, deployed pipeline (~18 MB)
+  model_metadata.json                 # features, options, metrics, SHAP + importance
+  shap_sample.npz, eval_arrays.npz    # arrays for the SHAP/eval plots
 data/
-  member2_model_metrics.json     # full metrics: per-class, confusion matrices, tuning results
-  member2_model_comparison.csv   # baseline vs improved summary
+  member2_model_metrics.json          # R2/RMSE/MAE, mapped confusion, tuning results
+  member2_model_comparison.csv
+  member2_wandb_runs.csv, member2_wandb_summary.json
 visuals/
-  08_model_comparison.png
-  09_confusion_matrix_logreg.png
-  10_confusion_matrix_rf.png
-  11_feature_importance.png
-  12_tuning_results.png
+  08_model_comparison.png  09_predicted_vs_actual_rf.png  10_residuals_rf.png
+  11_confusion_mapped_rf.png  12_tuning_results.png
+  13_shap_importance.png  14_shap_beeswarm.png
 streamlit_pages/
-  3_Model_Prediction.py          # multiple selectable models + probabilities
-  4_Feature_Importance.py        # explainability
-  5_Hyperparameter_Tuning.py     # experiment tracking
-member2_modeling_notebook.ipynb  # executed notebook (data -> model -> evaluation)
+  3_Model_Prediction.py  4_Feature_Importance.py  5_Hyperparameter_Tuning.py
+member2_modeling_notebook.ipynb       # executed (regression -> SHAP -> comparison)
 scripts/
-  create_member2_package.py      # reproducible: trains, evaluates, saves artifacts
-  make_member2_visuals.py        # regenerates the 5 visuals from saved metrics
-  build_member2_notebook.py      # builds + executes the notebook
-requirements.txt                 # pinned dependencies (scikit-learn 1.7.2)
+  create_member2_package.py  make_member2_visuals.py
+  tune_with_wandb.py  build_member2_notebook.py
+requirements.txt
 ```
 
-## 6. Handoff to Member 3 (app + deployment)
+## 9. Handoff to Member 3 (app + deployment)
 
-1. Copy `models/`, `data/member2_*`, and `streamlit_pages/3_*`, `4_*`, `5_*` into the app repo.
-   The pages expect `models/` and `data/` at the **app root** (same convention as Member 1's pages).
-2. Pages load artifacts by relative path and are cached (`st.cache_resource`), so they are fast.
-3. Page 3 lets the grader switch between the baseline and Random Forest and shows class probabilities.
-4. Use `requirements.txt` for the Hugging Face Space. **Pin `scikit-learn==1.7.2`** — the saved
-   models were trained on it, and a different version will warn on load.
-5. The only remaining required pages are **1 Introduction** and **2 Data Visualization** (Member 1,
-   done) plus a **6 Conclusion** page (Member 3) and the app entry file (`app.py` / `Home.py`).
+1. Copy `models/`, `data/member2_*`, and `streamlit_pages/3–5` into the app root (same convention
+   as Member 1's pages: `models/` and `data/` live at the app root).
+2. Pages are cached and load artifacts by relative path.
+3. Use `requirements.txt` for Hugging Face. **Pin `scikit-learn==1.7.2`** (the models were trained
+   on it). `shap` and `wandb` are included.
+4. Remaining required pages: **1 Introduction**, **2 Data Visualization** (Member 1, done),
+   **6 Conclusion** (Member 3), plus the app entry file (`Home.py`/`app.py`).
+5. **Cleanup:** 5 stale classification files from an earlier iteration can be deleted —
+   `models/logistic_regression.joblib`, `models/random_forest.joblib`,
+   `visuals/09_confusion_matrix_logreg.png`, `visuals/10_confusion_matrix_rf.png`,
+   `visuals/11_feature_importance.png`.
 
-## 7. Reproducing the package
+## 10. Reproduce
 
 ```bash
 pip install -r requirements.txt
-python scripts/create_member2_package.py    # trains + saves models, metrics, metadata
-python scripts/make_member2_visuals.py      # regenerates the 5 PNGs
-python scripts/build_member2_notebook.py    # rebuilds + executes the notebook
+python scripts/create_member2_package.py     # train + SHAP + save artifacts/metrics
+python scripts/make_member2_visuals.py       # 7 visuals
+WANDB_MODE=offline python scripts/tune_with_wandb.py   # W&B-tracked sweep
+python scripts/build_member2_notebook.py     # rebuild + execute the notebook
 ```
 
-Sandbox note: the scripts use single-threaded forests and bounded tree depth so they run
-within a small-memory (≈4 GB) environment; raise `n_estimators` / `max_depth` on a larger machine.
+## 11. Presentation talking points (Member 2)
 
-## 8. Limitations to include in the presentation
-
-- Class imbalance: report macro-F1 and the confusion matrix, not just accuracy.
-- 2015 census snapshot: not live tree health.
-- Associations, not causes: feature importance shows what the model uses, not what causes poor health.
-- Possible reporting/inspection bias in the recorded problem fields.
-- Frame the app as an educational triage tool, not an official maintenance decision system.
-
-## 9. Suggested presentation talking points (Member 2)
-
-- Show the model-comparison chart: Random Forest improves accuracy (0.49 → 0.58) and macro-F1 (0.36 → 0.41).
-- Show the confusion matrix and admit the Poor-class weakness honestly.
-- Show feature importance: species, diameter, and borough lead.
-- Explain the tuning: GridSearchCV on macro-F1 with stratified CV and balanced class weights.
+- Frame: predict a 0–2 health score to rank trees by inspection priority.
+- Two models: Linear Regression baseline vs tuned Random Forest; RF wins on R²/RMSE.
+- SHAP beeswarm: species, diameter, and visible problems drive the score, with direction.
+- W&B: show the tracked runs and the selected best configuration.
+- Be honest about the low R² and the imbalance — it is a feature of the data, not a bug in the work.

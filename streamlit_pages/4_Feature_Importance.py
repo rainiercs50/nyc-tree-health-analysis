@@ -1,10 +1,11 @@
 """
-Member 2 page: Feature Importance / Explainability
-Place this file in your Streamlit app's pages/ folder as 4_Feature_Importance.py.
+Member 2 page: Explainable AI with SHAP
+Place in your Streamlit app's pages/ folder as 4_Feature_Importance.py.
 
 Expected paths from app root:
     models/model_metadata.json
-    data/member2_model_metrics.json
+    visuals/13_shap_importance.png
+    visuals/14_shap_beeswarm.png
 """
 import json
 from pathlib import Path
@@ -13,12 +14,12 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 
-st.set_page_config(page_title="NYC Street Tree Health | Feature Importance", layout="wide")
-st.title("🔎 Feature Importance & Explainability")
-st.caption("Which inputs drive the Random Forest — modeling by Member 2")
+st.set_page_config(page_title="NYC Street Tree Health | Explainable AI", layout="wide")
+st.title("🔎 Explainable AI — SHAP")
+st.caption("What drives the predicted health score — modeling by Member 2")
 
 META_PATH = Path("models/model_metadata.json")
-METRICS_PATH = Path("data/member2_model_metrics.json")
+BEESWARM = Path("visuals/14_shap_beeswarm.png")
 
 try:
     meta = json.loads(META_PATH.read_text())
@@ -26,49 +27,55 @@ except FileNotFoundError:
     st.error("Could not find models/model_metadata.json. Copy the Member 2 `models/` folder into the app root.")
     st.stop()
 
-fi = meta.get("feature_importance", {})
-fi_df = pd.DataFrame({"feature": list(fi.keys()), "importance": list(fi.values())}) \
-    .sort_values("importance", ascending=True)
-
-st.subheader("1. Random Forest feature importance")
-fig = px.bar(fi_df, x="importance", y="feature", orientation="h", text="importance",
-             color="importance", color_continuous_scale="Greens")
-fig.update_traces(texttemplate="%{text:.2f}", textposition="outside")
-fig.update_layout(coloraxis_showscale=False, xaxis_title="Aggregated importance",
-                  yaxis_title="Feature")
-st.plotly_chart(fig, use_container_width=True)
-
-top3 = list(fi_df.sort_values("importance", ascending=False)["feature"].head(3))
-st.write(
-    f"**Insight:** the strongest drivers are **{', '.join(top3)}**. One-hot columns were "
-    "aggregated back to their original feature so each bar reflects the full contribution "
-    "of that input."
+st.markdown(
+    "We explain the **Random Forest Regressor** with **SHAP** (SHapley Additive "
+    "exPlanations). SHAP assigns each feature a signed contribution to a prediction: "
+    "positive pushes the predicted score toward **Good (2)**, negative toward **Poor (0)**."
 )
 
-st.subheader("2. How to read this")
-st.markdown("""
-- Importance here is the Random Forest **impurity-based importance**, aggregated across all
-  one-hot categories of each feature.
-- Higher means the feature was more useful for splitting trees toward the correct health class.
-- Importance shows **association, not causation**. A feature can look important because it
-  correlates with something else (for example, species correlates with typical size and planting location).
-- Tree size (`tree_dbh` / `dbh_group`) and `species` carrying high importance is consistent
-  with the EDA: larger and certain species of trees show different Good/Fair/Poor mixes.
-""")
+# 1. Global SHAP importance (mean |SHAP|), aggregated per original feature
+si = meta.get("shap_importance", {})
+si_df = pd.DataFrame({"feature": list(si.keys()), "mean_abs_shap": list(si.values())}) \
+    .sort_values("mean_abs_shap", ascending=True)
+st.subheader("1. Global feature importance (mean |SHAP|)")
+fig = px.bar(si_df, x="mean_abs_shap", y="feature", orientation="h", text="mean_abs_shap",
+             color="mean_abs_shap", color_continuous_scale="Purples")
+fig.update_traces(texttemplate="%{text:.3f}", textposition="outside")
+fig.update_layout(coloraxis_showscale=False, xaxis_title="mean(|SHAP value|)",
+                  yaxis_title="Feature")
+st.plotly_chart(fig, use_container_width=True)
+top3 = list(si_df.sort_values("mean_abs_shap", ascending=False)["feature"].head(3))
+st.write(f"**Insight:** the biggest drivers are **{', '.join(top3)}**. One-hot categories are "
+         "summed back to their original feature.")
 
-# Per-class recall context, if available
-try:
-    metrics = json.loads(METRICS_PATH.read_text())
-    rep = metrics["random_forest"]["report"]
-    rows = [{"class": c, "precision": rep[c]["precision"], "recall": rep[c]["recall"],
-             "f1": rep[c]["f1-score"], "support": int(rep[c]["support"])}
-            for c in ["Good", "Fair", "Poor"]]
-    st.subheader("3. Where the model is confident vs weak")
-    st.dataframe(pd.DataFrame(rows).set_index("class").round(3), use_container_width=True)
-    st.write(
-        "**Insight:** the model identifies **Good** trees well but struggles on the rare "
-        "**Poor** class. Feature importance tells us *what* the model uses; this table tells "
-        "us *where* it still makes mistakes, which matters for an imbalanced problem."
-    )
-except FileNotFoundError:
-    st.caption("Add data/member2_model_metrics.json to show per-class precision/recall.")
+# 2. SHAP beeswarm (direction of effect)
+st.subheader("2. Direction of effect (SHAP summary)")
+if BEESWARM.exists():
+    st.image(str(BEESWARM), use_container_width=True)
+    st.markdown("""
+- Each dot is one tree; **red = high feature value**, **blue = low**.
+- Dots to the **right** raise the predicted health score; to the **left** lower it.
+- Readable patterns: more **visible problems** and being a **Norway maple** push the score
+  **down**; larger **trunk diameter** and species like **honeylocust / London planetree**
+  push it **up**.
+""")
+else:
+    st.caption("Add visuals/14_shap_beeswarm.png to show the SHAP summary plot.")
+
+# 3. Linear model coefficients as a complement
+st.subheader("3. Cross-check: linear model coefficients")
+lc = meta.get("linear_abs_coef", {})
+if lc:
+    lc_df = pd.DataFrame({"feature": list(lc.keys()), "abs_coefficient": list(lc.values())}) \
+        .sort_values("abs_coefficient", ascending=True)
+    fig = px.bar(lc_df, x="abs_coefficient", y="feature", orientation="h",
+                 color="abs_coefficient", color_continuous_scale="Blues")
+    fig.update_layout(coloraxis_showscale=False, xaxis_title="|coefficient| (standardized inputs)",
+                      yaxis_title="Feature")
+    st.plotly_chart(fig, use_container_width=True)
+    st.write("**Insight:** the simple Linear Regression highlights similar top drivers, which "
+             "gives us more confidence the signal is real and not a tree-model artifact.")
+
+st.warning("SHAP shows **association, not causation**. A feature can look important because it "
+           "correlates with something else (e.g. species correlates with typical size and "
+           "planting location).")

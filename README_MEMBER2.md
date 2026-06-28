@@ -1,38 +1,36 @@
-# Member 2 Modeling + Evaluation Package
+# Member 2 — Regression Modeling, SHAP & W&B
 
 Project: **NYC Street Tree Health Predictor**
 Role: **Member 2 — Modeling and Evaluation Lead**
 Date: 2026-06-28
 
-## What this package contains
+Predicts a continuous **tree health score** (Poor=0, Fair=1, Good=2) so trees can be ranked by
+inspection priority. Built to the rubric: **linear regression**, **two switchable models**,
+**SHAP** explainability, **Weights & Biases** tuning.
 
-- `models/random_forest.joblib` — tuned, deployed pipeline (preprocessing + Random Forest).
-- `models/logistic_regression.joblib` — baseline pipeline.
-- `models/model_metadata.json` — feature lists, dropdown options, headline metrics, importances.
-- `data/member2_model_metrics.json` — full metrics (per-class, confusion matrices, tuning results).
-- `data/member2_model_comparison.csv` — baseline vs improved summary.
-- `visuals/08–12_*.png` — model comparison, two confusion matrices, feature importance, tuning.
+## Contents
+
+- `models/linear_regression.joblib`, `models/random_forest_regressor.joblib` — the two models.
+- `models/model_metadata.json` — features, dropdown options, metrics, SHAP + importances.
+- `models/shap_sample.npz`, `models/eval_arrays.npz` — arrays for the plots.
+- `data/member2_model_metrics.json`, `member2_model_comparison.csv` — evaluation.
+- `data/member2_wandb_runs.csv`, `member2_wandb_summary.json` — W&B-tracked sweep.
+- `visuals/08–14_*.png` — comparison, predicted-vs-actual, residuals, mapped confusion, tuning, SHAP.
 - `streamlit_pages/3_Model_Prediction.py`, `4_Feature_Importance.py`, `5_Hyperparameter_Tuning.py`.
-- `member2_modeling_notebook.ipynb` — executed notebook telling the full modeling story.
-- `scripts/create_member2_package.py`, `make_member2_visuals.py`, `build_member2_notebook.py`.
-- `requirements.txt` — pinned dependencies.
-- `member2_handoff.md` — written handoff for Member 3.
+- `member2_modeling_notebook.ipynb` — executed notebook.
+- `scripts/` — `create_member2_package.py`, `make_member2_visuals.py`, `tune_with_wandb.py`, `build_member2_notebook.py`.
+- `requirements.txt`, `member2_handoff.md`.
 
-## Member 2 responsibilities covered
+## Key results (test set)
 
-1. Built a preprocessing pipeline (scaling + one-hot) on Member 1's feature contract.
-2. Trained a Logistic Regression baseline with balanced class weights.
-3. Tuned a Random Forest with GridSearchCV scored on macro-F1 (stratified 3-fold CV).
-4. Evaluated both models: accuracy, macro-F1, confusion matrix, per-class precision/recall.
-5. Produced feature-importance explainability.
-6. Saved deployable artifacts and three Streamlit pages for the final app.
+| Model | R² | RMSE | MAE |
+|---|---|---|---|
+| Linear Regression (baseline) | 0.059 | 0.551 | 0.425 |
+| Random Forest Regressor (tuned) | 0.087 | 0.543 | 0.416 |
 
-## Key results
-
-- Random Forest (tuned): **accuracy 0.582, macro-F1 0.410** — beats the baseline (0.494 / 0.357).
-- Best params: `max_depth=16, min_samples_leaf=2, max_features="sqrt", n_estimators=150`.
-- Top drivers: species, trunk diameter, borough.
-- The model is strong on Good and weak on the rare Poor class — macro-F1 is the honest metric.
+Best RF: `depth=16, leaf=5, sqrt, 150 trees`. Top drivers: species, trunk diameter, borough,
+visible problems. R² is low (tree health is weakly predictable) — reported honestly; the model is
+useful for *ranking*, not precise measurement.
 
 ## Reproduce
 
@@ -40,10 +38,12 @@ Date: 2026-06-28
 pip install -r requirements.txt
 python scripts/create_member2_package.py
 python scripts/make_member2_visuals.py
+WANDB_MODE=offline python scripts/tune_with_wandb.py
 python scripts/build_member2_notebook.py
 ```
 
 ## Handoff to Member 3
 
-Copy `models/`, `data/member2_*`, and `streamlit_pages/3_*–5_*` into the app root and deploy with
-the pinned `requirements.txt`. See `member2_handoff.md` for details. **Pin `scikit-learn==1.7.2`.**
+Copy `models/`, `data/member2_*`, and `streamlit_pages/3–5` into the app root; deploy with the
+pinned `requirements.txt`. For the live W&B dashboard, run `wandb login` once. See
+`member2_handoff.md` for full details (including 5 stale files to delete).

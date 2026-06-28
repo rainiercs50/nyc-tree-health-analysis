@@ -1,5 +1,12 @@
 {
-  "target": "health",
+  "task": "regression",
+  "target": "health_score",
+  "target_from": "health",
+  "score_map": {
+    "Poor": 0,
+    "Fair": 1,
+    "Good": 2
+  },
   "class_order": [
     "Good",
     "Fair",
@@ -90,36 +97,64 @@
     }
   },
   "models": {
-    "logistic_regression": {
-      "file": "models/logistic_regression.joblib",
-      "label": "Logistic Regression (baseline)",
-      "accuracy": 0.49364936493649364,
-      "macro_f1": 0.3571701931603412
+    "linear_regression": {
+      "file": "models/linear_regression.joblib",
+      "label": "Linear Regression (baseline)",
+      "r2": 0.059259850148418725,
+      "rmse": 0.5509123268176338,
+      "mae": 0.42465419961460177,
+      "mapped_accuracy": 0.7384738473847384
     },
-    "random_forest": {
-      "file": "models/random_forest.joblib",
-      "label": "Random Forest (tuned)",
-      "accuracy": 0.5817581758175817,
-      "macro_f1": 0.40979553079692743,
+    "random_forest_regressor": {
+      "file": "models/random_forest_regressor.joblib",
+      "label": "Random Forest Regressor (tuned)",
+      "r2": 0.08690388408947924,
+      "rmse": 0.5427575805020688,
+      "mae": 0.4159497015351233,
+      "mapped_accuracy": 0.737973797379738,
       "best_params": {
         "max_depth": 16,
         "max_features": "sqrt",
-        "min_samples_leaf": 2,
+        "min_samples_leaf": 5,
         "n_estimators": 150
       }
     }
   },
-  "recommended_model": "random_forest",
+  "recommended_model": "random_forest_regressor",
   "feature_importance": {
-    "species_top15_or_other": 0.2576,
-    "tree_dbh": 0.2151,
-    "boroname": 0.1325,
-    "dbh_group": 0.087,
-    "steward": 0.0741,
-    "guards": 0.0651,
-    "problem_count": 0.0554,
-    "sidewalk": 0.0548,
-    "has_problem": 0.0293,
-    "curb_loc": 0.0291
+    "species_top15_or_other": 0.3722,
+    "tree_dbh": 0.1649,
+    "boroname": 0.1203,
+    "dbh_group": 0.0876,
+    "problem_count": 0.0612,
+    "steward": 0.0496,
+    "guards": 0.0449,
+    "sidewalk": 0.0388,
+    "has_problem": 0.037,
+    "curb_loc": 0.0236
+  },
+  "shap_importance": {
+    "species_top15_or_other": 0.1167,
+    "dbh_group": 0.0445,
+    "boroname": 0.0433,
+    "tree_dbh": 0.0296,
+    "has_problem": 0.0279,
+    "problem_count": 0.0229,
+    "sidewalk": 0.0117,
+    "steward": 0.0112,
+    "guards": 0.0088,
+    "curb_loc": 0.0058
+  },
+  "linear_abs_coef": {
+    "species_top15_or_other": 1.4782,
+    "steward": 0.2092,
+    "guards": 0.1699,
+    "boroname": 0.1493,
+    "dbh_group": 0.1327,
+    "tree_dbh": 0.0821,
+    "problem_count": 0.0716,
+    "curb_loc": 0.029,
+    "sidewalk": 0.0207,
+    "has_problem": 0.0029
   }
 }

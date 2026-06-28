@@ -1,0 +1,5 @@
+max_depth,min_samples_leaf,n_estimators,max_features,cv_r2,cv_rmse
+16,5,150,sqrt,0.0874,0.5433
+16,2,150,sqrt,0.0847,0.5441
+10,2,150,sqrt,0.0841,0.5442
+10,5,150,sqrt,0.0822,0.5448
