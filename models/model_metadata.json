@@ -1,0 +1,125 @@
+{
+  "target": "health",
+  "class_order": [
+    "Good",
+    "Fair",
+    "Poor"
+  ],
+  "numeric_features": [
+    "tree_dbh",
+    "problem_count"
+  ],
+  "categorical_features": [
+    "species_top15_or_other",
+    "steward",
+    "guards",
+    "sidewalk",
+    "has_problem",
+    "boroname",
+    "dbh_group",
+    "curb_loc"
+  ],
+  "categorical_options": {
+    "species_top15_or_other": [
+      "American linden",
+      "Callery pear",
+      "Japanese zelkova",
+      "London planetree",
+      "Norway maple",
+      "Other species",
+      "Sophora",
+      "cherry",
+      "ginkgo",
+      "green ash",
+      "honeylocust",
+      "littleleaf linden",
+      "pin oak",
+      "red maple",
+      "silver maple",
+      "sweetgum"
+    ],
+    "steward": [
+      "1or2",
+      "3or4",
+      "4orMore",
+      "Unknown"
+    ],
+    "guards": [
+      "Harmful",
+      "Helpful",
+      "Unknown",
+      "Unsure"
+    ],
+    "sidewalk": [
+      "Damage",
+      "NoDamage"
+    ],
+    "has_problem": [
+      "No",
+      "Yes"
+    ],
+    "boroname": [
+      "Bronx",
+      "Brooklyn",
+      "Manhattan",
+      "Queens",
+      "Staten Island"
+    ],
+    "dbh_group": [
+      "0-3 in sapling/small",
+      "13-24 in mature",
+      "25+ in large",
+      "4-6 in young",
+      "7-12 in medium"
+    ],
+    "curb_loc": [
+      "OffsetFromCurb",
+      "OnCurb"
+    ]
+  },
+  "numeric_meta": {
+    "tree_dbh": {
+      "min": 0,
+      "max": 99,
+      "median": 10
+    },
+    "problem_count": {
+      "min": 0,
+      "max": 6,
+      "median": 0
+    }
+  },
+  "models": {
+    "logistic_regression": {
+      "file": "models/logistic_regression.joblib",
+      "label": "Logistic Regression (baseline)",
+      "accuracy": 0.49364936493649364,
+      "macro_f1": 0.3571701931603412
+    },
+    "random_forest": {
+      "file": "models/random_forest.joblib",
+      "label": "Random Forest (tuned)",
+      "accuracy": 0.5817581758175817,
+      "macro_f1": 0.40979553079692743,
+      "best_params": {
+        "max_depth": 16,
+        "max_features": "sqrt",
+        "min_samples_leaf": 2,
+        "n_estimators": 150
+      }
+    }
+  },
+  "recommended_model": "random_forest",
+  "feature_importance": {
+    "species_top15_or_other": 0.2576,
+    "tree_dbh": 0.2151,
+    "boroname": 0.1325,
+    "dbh_group": 0.087,
+    "steward": 0.0741,
+    "guards": 0.0651,
+    "problem_count": 0.0554,
+    "sidewalk": 0.0548,
+    "has_problem": 0.0293,
+    "curb_loc": 0.0291
+  }
+}
